@@ -34,14 +34,7 @@ const registerUser = asyncHandler(async (req, res) => {
     return res.status(500).json({ message: 'User creation failed' });
   }
 
-  const token = jwt.sign({ id: newUser._id, role: role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
-
   res.status(201).json({
-    id: newUser._id,
-    email: newUser.email,
-    token,
     message: "User registered successfully"
   });
 });
@@ -69,10 +62,27 @@ const loginUser = asyncHandler(async (req, res) => {
   const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
-  res.status(200).json({ token, id:user._id, role:user.role, message:"User logged in successfully" });
+
+  res.cookie("jwt", token, {
+    httpOnly: true, // Prevents access from JavaScript
+    // secure: process.env.NODE_ENV === "production", // Use HTTPS in production
+    sameSite: "Strict", // Prevent CSRF attacks
+    maxAge: 60 * 60 * 1000, // Cookie expires in 1 hr
+  });
+
+  res.status(200).json({ id:user._id, role:user.role, message:"User logged in successfully" });
+});
+
+const logoutUser = asyncHandler(async (req, res) => {
+  res.cookie("jwt", "", {
+    httpOnly: true,
+    expires: new Date(0),
+  });
+  res.status(200).json({ message: "User logged out successfully" });
 });
 
 module.exports = {
   registerUser,
   loginUser,
+  logoutUser
 };
